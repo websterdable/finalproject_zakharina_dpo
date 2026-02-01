@@ -42,3 +42,17 @@ logs/*.log
 *.db
 .DS_Store
 Thumbs.db
+
+.env
+*.env
+.env.local
+.env.development
+.env.production
+
+# Данные для разработки
+dev_data/
+test_*.json
+
+# IDE специфичное
+.vscode/settings.json
+.idea/workspace.xml

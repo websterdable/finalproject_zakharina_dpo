@@ -1,3 +1,5 @@
+.PHONY: install project build publish package-install lint
+
 install:
 	poetry install
 
@@ -15,12 +17,3 @@ package-install:
 
 lint:
 	poetry run ruff check .
-
-format:
-	poetry run ruff format .
-
-test:
-	echo "Тесты будут добавлены"
-
-run-parser:
-	poetry run python -m src.valutatrade_hub.parser_service.updater

@@ -13,7 +13,8 @@ requests = "^2.31.0"
 ruff = "^0.4.4"
 
 [tool.poetry.scripts]
-project = "src.valutatrade_hub.main:main"
+project = "main:main"
+wallet = "main:main" 
 
 [tool.valutatrade]
 data_dir = "data"
