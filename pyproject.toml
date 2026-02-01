@@ -4,10 +4,17 @@ version = "0.1.0"
 description = "Валютный кошелек с Parser Service для трейдинга"
 authors = ["websterdable 258216809+websterdable@users.noreply.github.com"]
 
+packages = [
+    { include = "valutatrade_hub", from = "." },
+    { include = "main.py", from = "." }
+]
+
+
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 prettytable = "^3.9.0"
 requests = "^2.31.0"
+tomli = "^2.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4.4"
@@ -18,9 +25,13 @@ wallet = "main:main"
 
 [tool.valutatrade]
 data_dir = "data"
-rates_ttl_seconds = 300
 default_base_currency = "USD"
-log_level = "INFO"
+rates_ttl_seconds = 300
+log_file = "logs/valutatrade.log"
+parser_enabled = true
+parser_interval_minutes = 15
+coingecko_timeout = 10
+exchangerate_timeout = 10
 
 [tool.ruff]
 line-length = 88

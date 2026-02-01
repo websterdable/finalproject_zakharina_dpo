@@ -1,5 +1,6 @@
-import sys
 import io
+import sys
+
 from valutatrade_hub.cli.interface import main as cli_main
 
 # Принудительно UTF-8
