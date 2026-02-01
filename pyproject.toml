@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "finalproject_zakharina_dpo"
+version = "0.1.0"
+description = "Валютный кошелек с Parser Service для трейдинга"
+authors = ["websterdable 258216809+websterdable@users.noreply.github.com"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+prettytable = "^3.9.0"
+requests = "^2.31.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.4"
+
+[tool.poetry.scripts]
+project = "src.valutatrade_hub.main:main"
+
+[tool.valutatrade]
+data_dir = "data"
+rates_ttl_seconds = 300
+default_base_currency = "USD"
+log_level = "INFO"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = ["venv", ".venv", "dist", "__pycache__", "logs", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E501", "B008"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
