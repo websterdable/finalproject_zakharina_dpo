@@ -2,7 +2,10 @@
 Командный интерфейс (CLI) для приложения.
 """
 import argparse
+import json
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from prettytable import PrettyTable
@@ -32,8 +35,50 @@ class CLI:
 
     def __init__(self):
         self.current_user: Optional[User] = None
+        self.session_file = Path("data/session.json")
         self.logger = None
         self.setup_logging()
+        self.load_session()
+    def save_session(self):
+        """Сохраняет текущую сессию в файл."""
+        session_data = {}
+        if self.current_user:
+            session_data = {
+                "user_id": self.current_user.user_id,
+                "username": self.current_user.username,
+                "saved_at": datetime.now().isoformat()
+            }
+
+        # Создаем директорию если нет
+        self.session_file.parent.mkdir(exist_ok=True)
+
+        with open(self.session_file, 'w', encoding='utf-8') as f:
+            json.dump(session_data, f, indent=2)
+
+    def load_session(self):
+        """Загружает сессию из файла."""
+        if not self.session_file.exists():
+            return
+
+        try:
+            with open(self.session_file, 'r', encoding='utf-8') as f:
+                session_data = json.load(f)
+
+            if session_data:
+                # Загружаем пользователя из базы
+                from ..infra.database import db
+                user_data = db.get_user_by_id(session_data["user_id"])
+                if user_data:
+                    from ..core.models import User
+                    self.current_user = User.from_dict(user_data)
+        except Exception as e:
+            self.logger.error(f"Ошибка загрузки сессии: {e}")
+
+    def clear_session(self):
+        """Очищает сессию."""
+        self.current_user = None
+        if self.session_file.exists():
+            self.session_file.unlink()
 
     def setup_logging(self):
         """Настраивает логирование."""
@@ -179,6 +224,7 @@ class CLI:
         """Команда входа."""
         try:
             self.current_user = user_usecase.login(args.username, args.password)
+            self.save_session()
             print(f"Вы вошли как '{self.current_user.username}'")
         except UserNotFoundError:
             print(f"Пользователь '{args.username}' не найден")
@@ -194,12 +240,11 @@ class CLI:
             return
 
         try:
-            total_value, details = portfolio_usecase.get_total_value(
-                self.current_user.user_id,
-                args.base
-            )
+            portfolio = portfolio_usecase.get_portfolio(self.current_user.user_id)
+            rates_cache = rates_usecase.get_rates_cache()
+            pairs = rates_cache.get("pairs", {})
 
-            if not details:
+            if not portfolio.wallets:
                 print("Ваш портфель пуст")
                 return
 
@@ -208,23 +253,44 @@ class CLI:
             table.align = "r"
             table.align["Валюта"] = "l"
 
-            for currency, value in details.items():
-                if currency == args.base:
-                    balance = value
-                    converted = value
-                else:
-                    # Нужно получить баланс из портфеля
-                    portfolio = portfolio_usecase.get_portfolio(self.current_user.user_id)
-                    wallet = portfolio.get_wallet(currency)
-                    balance = wallet.balance if wallet else 0
-                    converted = value
+            # Рассчитываем вручную
+            total_value = 0.0
+            details = {}
 
-                percentage = (converted / total_value * 100) if total_value > 0 else 0
+            for currency, wallet in portfolio.wallets.items():
+                if currency == args.base:
+                    value = wallet.balance
+                else:
+                    pair_key = f"{currency}_{args.base}"
+                    if pair_key in pairs:
+                        rate = pairs[pair_key].get("rate", 0)
+                        value = wallet.balance * rate
+                    else:
+                        # Пробуем обратный курс
+                        reverse_key = f"{args.base}_{currency}"
+                        if reverse_key in pairs:
+                            rate = pairs[reverse_key].get("rate", 0)
+                            if rate > 0:
+                                value = wallet.balance / rate
+                            else:
+                                value = 0
+                        else:
+                            value = 0
+
+                details[currency] = value
+                total_value += value
+
+            # Создаем таблицу
+            for currency, value in details.items():
+                wallet = portfolio.get_wallet(currency)
+                balance = wallet.balance if wallet else 0
+
+                percentage = (value / total_value * 100) if total_value > 0 else 0
 
                 table.add_row([
                     currency,
                     f"{balance:.4f}",
-                    f"{converted:.2f} {args.base}",
+                    f"{value:.2f} {args.base}",
                     f"{percentage:.1f}%"
                 ])
 
@@ -269,6 +335,7 @@ class CLI:
         except Exception as e:
             print(f"Ошибка при покупке: {e}")
             self.logger.error(f"Buy error: {e}")
+
 
     def command_sell(self, args):
         """Команда продажи валюты."""
@@ -465,6 +532,7 @@ class CLI:
         """Команда выхода."""
         if self.current_user:
             print(f"Вы вышли из системы (пользователь: {self.current_user.username})")
+            self.clear_session()
             self.current_user = None
         else:
             print("Вы не вошли в систему")
