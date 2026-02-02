@@ -6,7 +6,6 @@ from typing import Any, Optional
 
 import tomli
 
-
 class SettingsLoader:
     """Singleton для загрузки настроек из pyproject.toml."""
 

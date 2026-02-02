@@ -18,19 +18,26 @@ class RatesUpdater:
     def __init__(self, use_mock: bool = False):
         """
         Инициализирует обновлятель курсов.
-
         Args:
             use_mock: Использовать мок-клиенты для тестирования
         """
         self.logger = logging.getLogger(__name__)
 
-        if use_mock or not config.has_exchangerate_key:
+        if use_mock:
             self.clients = [MockApiClient()]
         else:
-            self.clients = [
-                CoinGeckoClient(),
-                ExchangeRateApiClient()
-            ]
+            # Всегда используем CoinGecko (работает без ключа)
+            self.clients = [CoinGeckoClient()]
+
+            # ExchangeRate добавляем только если есть ключ
+            if config.has_exchangerate_key:
+                self.clients.append(ExchangeRateApiClient())
+            else:
+                # Логируем предупреждение, но не падаем
+                self.logger.warning(
+                    "API ключ для ExchangeRate не установлен. "
+                    "Фиатные курсы не будут обновляться."
+                )
 
         self.storage = ParserStorage()
 
